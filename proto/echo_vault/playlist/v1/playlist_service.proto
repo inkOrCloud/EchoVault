@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package echo_vault.playlist.v1;
+
+option go_package = "github.com/ink/echovault-server/api/grpc/generated/echo_vault/playlist/v1;playlistpb";
+
+import "google/protobuf/timestamp.proto";
+import "echo_vault/common/v1/types.proto";
+import "echo_vault/song/v1/song_service.proto";
+
+// ==========================================
+// 歌单服务
+// ==========================================
+service PlaylistService {
+  // 歌单 CRUD
+  rpc CreatePlaylist(CreatePlaylistRequest) returns (CreatePlaylistResponse);
+  rpc GetPlaylist(GetPlaylistRequest) returns (GetPlaylistResponse);
+  rpc UpdatePlaylist(UpdatePlaylistRequest) returns (UpdatePlaylistResponse);
+  rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistResponse);
+  rpc ListPlaylists(ListPlaylistsRequest) returns (ListPlaylistsResponse);
+
+  // 歌单内歌曲操作
+  rpc AddSong(AddSongRequest) returns (AddSongResponse);
+  rpc RemoveSong(RemoveSongRequest) returns (RemoveSongResponse);
+  rpc ReorderSongs(ReorderSongsRequest) returns (ReorderSongsResponse);
+  rpc ListPlaylistSongs(ListPlaylistSongsRequest) returns (ListPlaylistSongsResponse);
+}
+
+// ==========================================
+// 消息定义
+// ==========================================
+
+// 歌单
+message Playlist {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string cover_url = 4;              // REST 封面下载地址
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_USER = 1;                   // 用户创建
+    TYPE_FAVORITE = 2;               // 收藏（自动创建）
+    TYPE_AUTO = 3;                   // 智能生成
+  }
+  Type type = 5;
+  string owner_id = 6;
+  bool is_public = 7;
+  int32 song_count = 8;
+  int64 version = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// 歌单中的歌曲
+message PlaylistSong {
+  string playlist_id = 1;
+  string song_id = 2;
+  song.v1.Song song = 3;            // 嵌入歌曲信息
+  int32 position = 4;               // 排序位置
+  string added_by = 5;
+  google.protobuf.Timestamp added_at = 6;
+}
+
+message CreatePlaylistRequest {
+  string name = 1;
+  string description = 2;
+  bool is_public = 3;
+}
+
+message CreatePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message GetPlaylistRequest {
+  string id = 1;
+}
+
+message GetPlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message UpdatePlaylistRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  bool is_public = 4;
+}
+
+message UpdatePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message DeletePlaylistRequest {
+  string id = 1;
+}
+
+message DeletePlaylistResponse {}
+
+message ListPlaylistsRequest {
+  echo_vault.common.v1.PaginationRequest pagination = 1;
+}
+
+message ListPlaylistsResponse {
+  repeated Playlist playlists = 1;
+  echo_vault.common.v1.PaginationResponse pagination = 2;
+}
+
+message AddSongRequest {
+  string playlist_id = 1;
+  string song_id = 2;
+  int32 position = 3;
+}
+
+message AddSongResponse {
+  PlaylistSong playlist_song = 1;
+}
+
+message RemoveSongRequest {
+  string playlist_id = 1;
+  string song_id = 2;
+}
+
+message RemoveSongResponse {}
+
+message ReorderSongsRequest {
+  string playlist_id = 1;
+  repeated string song_ids = 2;     // 新顺序
+}
+
+message ReorderSongsResponse {}
+
+message ListPlaylistSongsRequest {
+  string playlist_id = 1;
+  echo_vault.common.v1.PaginationRequest pagination = 2;
+}
+
+message ListPlaylistSongsResponse {
+  repeated PlaylistSong songs = 1;
+  echo_vault.common.v1.PaginationResponse pagination = 2;
+}

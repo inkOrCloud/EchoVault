@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package echo_vault.sync.v1;
+
+option go_package = "github.com/ink/echovault-server/api/grpc/generated/echo_vault/sync/v1;syncpb";
+
+import "google/protobuf/timestamp.proto";
+
+// ==========================================
+// 同步服务 — 离线优先架构的核心
+// ==========================================
+service SyncService {
+  // Push: 批量提交本地变更
+  rpc PushChanges(PushChangesRequest) returns (PushChangesResponse);
+
+  // Pull: 拉取增量变更（服务端流）
+  rpc PullChanges(PullChangesRequest) returns (stream PullChangesResponse);
+
+  // Subscribe: 实时推送通知（服务端流）
+  rpc SubscribeChanges(SubscribeChangesRequest) returns (stream SubscribeChangesResponse);
+
+  // Ack: 确认已消费的变更
+  rpc AckChanges(AckChangesRequest) returns (AckChangesResponse);
+}
+
+// ==========================================
+// 消息定义
+// ==========================================
+
+// 同步变更记录
+message SyncChange {
+  string entity_type = 1;             // "song" | "playlist" | "playlist_song" | "lyric"
+  string entity_id = 2;               // 实体 UUID
+  Action action = 3;
+  int64 version = 4;                  // 单调递增的版本号（服务端分配）
+  bytes data = 5;                     // 变更后的完整实体（protobuf 序列化）
+  google.protobuf.Timestamp timestamp = 6;
+  string device_id = 7;               // 来源设备
+  string user_id = 8;                 // 操作用户
+
+  enum Action {
+    ACTION_UNSPECIFIED = 0;
+    ACTION_CREATE = 1;
+    ACTION_UPDATE = 2;
+    ACTION_DELETE = 3;
+  }
+}
+
+message PushChangesRequest {
+  string device_id = 1;
+  int64 last_pull_version = 2;
+  repeated SyncChange changes = 3;
+}
+
+message PushChangesResponse {
+  int64 server_version = 1;
+  int32 accepted_count = 2;
+  repeated ConflictInfo conflicts = 3;
+}
+
+message ConflictInfo {
+  string entity_type = 1;
+  string entity_id = 2;
+  int64 local_version = 3;
+  int64 server_version = 4;
+  enum Resolution {
+    RESOLUTION_UNSPECIFIED = 0;
+    RESOLUTION_SERVER_WINS = 1;
+    RESOLUTION_DUPLICATE_KEPT = 2;
+  }
+  Resolution resolution = 5;
+}
+
+message PullChangesRequest {
+  string device_id = 1;
+  int64 since_version = 2;
+}
+
+message PullChangesResponse {
+  SyncChange change = 1;
+}
+
+message SubscribeChangesRequest {
+  string device_id = 1;
+}
+
+message ChangeNotification {
+  string entity_type = 1;
+  string action = 2;
+  int64 new_version = 3;
+}
+
+message SubscribeChangesResponse {
+  ChangeNotification notification = 1;
+}
+
+message AckChangesRequest {
+  string device_id = 1;
+  int64 acked_version = 2;
+}
+
+message AckChangesResponse {}

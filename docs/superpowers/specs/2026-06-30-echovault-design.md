@@ -709,3 +709,52 @@ services:
 | 模块化单体 | 大多数项目 | 离线能力不足 |
 | 全微服务 | 大型团队 | 对自托管过度设计 |
 | **离线优先边缘架构（选定）** | **多设备 + 离线场景** | **当前最优解** |
+
+---
+
+## 11. gRPC API 定义
+
+### 11.1 Proto 项目结构
+
+所有 proto 文件位于项目根目录 `proto/`，使用 Buf 管理：
+
+```
+proto/
+├── buf.yaml                    # 模块配置 + 依赖声明
+├── buf.gen.yaml                # 代码生成配置（Go + Dart）
+├── echo_vault/
+│   ├── common/v1/
+│   │   └── types.proto         # UUID、分页、FileSource、FileStatus
+│   ├── user/v1/
+│   │   └── user_service.proto  # 用户注册/登录/设备管理
+│   ├── song/v1/
+│   │   └── song_service.proto  # 歌曲 CRUD/hash查询/发布
+│   ├── playlist/v1/
+│   │   └── playlist_service.proto # 歌单 CRUD/歌曲编排
+│   ├── lyric/v1/
+│   │   └── lyric_service.proto # 歌词 CRUD/搜索
+│   └── sync/v1/
+│       └── sync_service.proto  # 同步引擎核心协议
+```
+
+### 11.2 服务清单
+
+| 服务 | 协议 | 关键 RPC |
+|:---|:---:|:---|
+| **UserService** | gRPC Unary | Register, Login, RefreshToken, RegisterDevice, ListDevices |
+| **SongService** | gRPC Unary | **CheckSongsByHash**, **PublishSong**, ListSongs, SearchSongs |
+| **PlaylistService** | gRPC Unary | CreatePlaylist, AddSong, RemoveSong, ReorderSongs |
+| **LyricService** | gRPC Unary | GetLyric, SaveLyric, SearchLyric |
+| **SyncService** 🔄 | gRPC Mixed | PushChanges(Unary), PullChanges(Stream), SubscribeChanges(Stream) |
+
+### 11.3 生成代码
+
+```bash
+# 安装 Buf CLI（已预装）
+# 生成 Go + Dart 代码
+cd proto && buf generate
+```
+
+生成路径：
+- **Go**: `echovault-server/api/grpc/generated/`
+- **Dart**: `echo_vault_app/lib/models/generated/`

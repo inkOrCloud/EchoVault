@@ -1,0 +1,19 @@
+version: v2
+plugins:
+  # Go protobuf code
+  - remote: buf.build/protocolbuffers/go
+    out: ../echovault-server/api/grpc/generated
+    opt: paths=source_relative
+
+  # Go gRPC code
+  - remote: buf.build/grpc/go
+    out: ../echovault-server/api/grpc/generated
+    opt: paths=source_relative
+
+  # Dart protobuf code
+  - remote: buf.build/protocolbuffers/dart
+    out: ../echo_vault_app/lib/models/generated
+
+  # Dart gRPC code
+  - remote: buf.build/grpc/dart
+    out: ../echo_vault_app/lib/models/generated

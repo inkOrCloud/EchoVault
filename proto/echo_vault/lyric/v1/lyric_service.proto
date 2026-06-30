@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package echo_vault.lyric.v1;
+
+option go_package = "github.com/ink/echovault-server/api/grpc/generated/echo_vault/lyric/v1;lyricpb";
+
+import "google/protobuf/timestamp.proto";
+
+// ==========================================
+// 歌词服务
+// ==========================================
+service LyricService {
+  // 获取歌词
+  rpc GetLyric(GetLyricRequest) returns (GetLyricResponse);
+
+  // 保存/更新歌词
+  rpc SaveLyric(SaveLyricRequest) returns (SaveLyricResponse);
+
+  // 删除歌词
+  rpc DeleteLyric(DeleteLyricRequest) returns (DeleteLyricResponse);
+
+  // 搜索歌词（通过文本内容搜索）
+  rpc SearchLyric(SearchLyricRequest) returns (SearchLyricResponse);
+}
+
+// ==========================================
+// 消息定义
+// ==========================================
+
+// 歌词
+message Lyric {
+  string song_id = 1;
+  string content = 2;                // LRC 格式文本
+  Type type = 3;
+  string language = 4;               // "zh" | "en" | "ja" | "ko"
+  int32 offset_ms = 5;               // 整体时间轴偏移（毫秒）
+  Source source = 6;
+  int64 version = 7;
+  google.protobuf.Timestamp updated_at = 8;
+
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_ORIGINAL = 1;               // 原版歌词
+    TYPE_TRANSLATION = 2;            // 翻译歌词
+    TYPE_PHONETIC = 3;               // 注音（罗马音/拼音）
+  }
+
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    SOURCE_EMBEDDED = 1;             // 从音频文件标签嵌入
+    SOURCE_MANUAL = 2;               // 用户手动编辑
+    SOURCE_FETCHED = 3;              // 自动抓取
+  }
+}
+
+message GetLyricRequest {
+  string song_id = 1;
+  string language = 2;               // 可选：指定语言
+  Lyric.Type type = 3;               // 可选：指定歌词类型
+}
+
+message GetLyricResponse {
+  repeated Lyric lyrics = 1;
+}
+
+message SaveLyricRequest {
+  string song_id = 1;
+  string content = 2;                // LRC 格式
+  Lyric.Type type = 3;
+  string language = 4;
+  int32 offset_ms = 5;
+}
+
+message SaveLyricResponse {
+  Lyric lyric = 1;
+}
+
+message DeleteLyricRequest {
+  string song_id = 1;
+  Lyric.Type type = 2;
+  string language = 3;
+}
+
+message DeleteLyricResponse {}
+
+message SearchLyricRequest {
+  string keyword = 1;
+}
+
+message SearchLyricResponse {
+  repeated Lyric lyrics = 1;
+}

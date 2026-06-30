@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package echo_vault.common.v1;
+
+option go_package = "github.com/ink/echovault-server/api/grpc/generated/echo_vault/common/v1;commonpb";
+
+// ==========================================
+// 通用类型定义
+// ==========================================
+
+// UUID 包装器（v7 格式，按时间排序）
+message UUID {
+  string value = 1;
+}
+
+// 分页请求参数
+message PaginationRequest {
+  int32 page_size = 1;   // 每页数量，默认 20
+  string page_token = 2; // 分页游标，首次请求为空
+}
+
+// 分页响应
+message PaginationResponse {
+  int32 total_count = 1;       // 总记录数
+  string next_page_token = 2;  // 下一页游标
+}
+
+// 空响应
+message Empty {}
+
+// SHA256 哈希值
+message FileHash {
+  string hex = 1;
+}
+
+// 文件来源类型
+enum FileSource {
+  FILE_SOURCE_UNSPECIFIED = 0;
+  FILE_SOURCE_LOCAL = 1;     // 本地扫描文件
+  FILE_SOURCE_UPLOADED = 2;  // 已上传到服务器
+  FILE_SOURCE_SYNCED = 3;    // 从其他设备同步
+}
+
+// 文件可用性状态
+enum FileStatus {
+  FILE_STATUS_UNSPECIFIED = 0;
+  FILE_STATUS_LOCAL_ONLY = 1;  // 仅本地有，未上传
+  FILE_STATUS_UPLOADED = 2;    // 已上传到服务器
+  FILE_STATUS_DOWNLOADED = 3;  // 已下载到本设备缓存
+  FILE_STATUS_CLOUD_ONLY = 4;  // 仅云端有，本设备未下载
+}
