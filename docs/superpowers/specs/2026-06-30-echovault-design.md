@@ -216,13 +216,147 @@ Flutter 端使用 [drift](https://drift.simonbinder.eu/)（原 moor）作为 SQL
 | `last_played_at` | 本设备播放时间 |
 | `play_count` | 本设备播放次数 |
 
-### 3.4 音乐文件存储
 
-- **默认**：服务器本地文件系统（`STORAGE_TYPE=local`）
-- **未来**：S3 兼容存储（`STORAGE_TYPE=s3`）
-- 通过 `pkg/storage` 接口抽象，切换无感
+### 3.4 文件存储设计
 
----
+#### 3.4.1 存储内容分类
+
+| 数据类型 | 大小 | 客户端存储 | 服务端存储 | 传输协议 |
+|:---|:---:|:---|:---|:---:|
+| **音频文件** | 大（3-50MB） | 原始路径（本地扫描）/ 应用缓存目录（离线下载） | `STORAGE_PATH/songs/{song_id}/{filename}` | REST 分段上传 / Range 范围下载 |
+| **封面图片** | 中（10-500KB） | 应用缓存目录 `{cacheDir}/covers/{song_id}.jpg` | `STORAGE_PATH/covers/{song_id}.jpg` | REST 下载（带缓存头） |
+| **歌词文本** | 小（1-10KB） | SQLite `lyric.content` 字段 | SQLite / PostgreSQL `lyrics.content` 字段 | gRPC Unary |
+
+#### 3.4.2 客户端存储策略
+
+**本地扫描的音乐文件：**
+- 存储在用户原始路径（如 `/Music/周杰伦-晴天.mp3`）
+- 客户端记录 `song.local_path` 指向原始路径
+- 不复制、不移动用户文件
+
+**从服务端离线缓存的文件：**
+- 存储在应用私有目录 `{appDir}/cache/audio/{song_id}/{filename}`
+- 用户手动点击「下载到本地」时触发
+- 支持批量下载
+
+**封面缓存：**
+- 存储在 `{appDir}/cache/covers/{song_id}.jpg`
+- 首次从服务端下载后缓存，后续优先读本地缓存
+- 支持缓存过期/清理机制
+
+**歌词：**
+- 直接存储在本地 SQLite 的 `lyrics` 表中
+- 与服务端 gRPC GetLyric 同步
+
+#### 3.4.3 服务端存储策略
+
+**存储后端抽象（`pkg/storage`）：**
+
+```go
+// pkg/storage/storage.go
+type Storage interface {
+    SaveAudio(ctx context.Context, songID uuid.UUID, filename string, reader io.Reader) error
+    GetAudio(ctx context.Context, songID uuid.UUID) (io.ReadCloser, int64, error)
+    SaveCover(ctx context.Context, songID uuid.UUID, reader io.Reader) error
+    GetCover(ctx context.Context, songID uuid.UUID) (io.ReadCloser, int64, error)
+    DeleteSongFiles(ctx context.Context, songID uuid.UUID) error
+}
+```
+
+**默认实现—本地文件系统（`STORAGE_TYPE=local`）：**
+
+```
+data/files/
+├── songs/
+│   ├── {song_id}/
+│   │   └── 晴天.mp3
+│   └── {song_id}/
+│       └── 七里香.flac
+└── covers/
+    ├── {song_id}.jpg
+    └── {song_id}.png
+```
+
+**未来实现—S3 兼容（`STORAGE_TYPE=s3`）：**
+
+```
+bucket: echovault
+  Key: songs/{song_id}/{filename}
+  Key: covers/{song_id}.jpg
+```
+
+**文件上传/下载 REST API：**
+
+```http
+### 上传音频文件（分段上传）
+POST /api/v1/files/upload?type=audio&song_id={id}
+Content-Type: multipart/form-data; boundary=xxx
+→ 200 { "file_url": "/api/v1/files/download/audio/{id}", "file_size": 8421309 }
+
+### 下载音频文件（支持 Range 头，用于流式播放和拖动进度条）
+GET /api/v1/files/download/audio/{id}
+Range: bytes=0-1023
+→ 206 Partial Content
+Content-Range: bytes 0-1023/8421309
+
+### 上传封面
+POST /api/v1/files/upload?type=cover&song_id={id}
+Content-Type: multipart/form-data; boundary=xxx
+→ 200 { "cover_url": "/api/v1/files/download/cover/{id}" }
+
+### 下载封面
+GET /api/v1/files/download/cover/{id}
+→ 200 (带 Cache-Control: public, max-age=86400)
+
+### 删除（发布者撤销）
+DELETE /api/v1/files/{type}/{id}
+```
+
+#### 3.4.4 文件完整流转路径
+
+```
+┌────────── 客户端 A（扫描/发布）──────────┐
+│                                          │
+│  扫描 /Music 目录                          │
+│    → 发现 周杰伦-晴天.mp3                   │
+│    → SHA256=abc123                        │
+│    → 写入本地 SQLite                       │
+│      song.id = uuid_v7                    │
+│      song.local_path = /Music/周杰伦-晴天  │
+│      song.file_status = LOCAL_ONLY        │
+│                                          │
+│  用户手动发布：                              │
+│    → POST /upload?type=audio&id={id}      │
+│      → 服务端存到 songs/{id}/晴天.mp3       │
+│    → POST /upload?type=cover&id={id}      │
+│      → 服务端存到 covers/{id}.jpg          │
+│    → gRPC SaveLyric(LRC内容)              │
+│      → 服务端写入 lyrics 表                │
+│    → song.file_status → UPLOADED          │
+│                                          │
+└──────────────────────────────────────────┘
+
+┌────────── 客户端 B（同步/离线）────────────┐
+│                                          │
+│  PullChanges → 发现新歌 abc123            │
+│    → 本地 SQLite 写入元数据                │
+│    → 下载封面 → cache/covers/{id}.jpg     │
+│    → 下载歌词 → 写入本地 lyrics 表          │
+│    → 音频不下载（file_status=CLOUD_ONLY）  │
+│                                          │
+│  用户点击「播放」（在线流式）:                │
+│    → GET /download/audio/{id} (带 Range) │
+│    → just_audio 流式解码播放               │
+│                                          │
+│  用户点击「下载离线」:                      │
+│    → GET /download/audio/{id}             │
+│    → 存到 cache/audio/{id}/晴天.mp3       │
+│    → file_status → DOWNLOADED            │
+│    → 离线可播放                           │
+│                                          │
+└──────────────────────────────────────────┘
+```
+
 
 ## 4. 同步引擎设计
 
