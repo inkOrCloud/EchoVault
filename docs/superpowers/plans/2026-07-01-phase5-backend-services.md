@@ -194,113 +194,7 @@ func entToProto(r *ent.Lyric) *lyricpb.Lyric {
 
 ---
 
-### Task 2: LRC 解析器
-
-**Files:**
-- Create: `echovault-server/pkg/lrc/parser.go`
-- Create: `echovault-server/pkg/lrc/parser_test.go`
-
-- [ ] **Step 1 (RED): 编写测试**
-
-```go
-// pkg/lrc/parser_test.go
-package lrc_test
-
-import (
-	"testing"
-	"github.com/inkOrCloud/EchoVault/echovault-server/pkg/lrc"
-)
-
-func TestParse_Basic(t *testing.T) {
-	lines := lrc.Parse("[00:01.00]Line 1\n[00:02.50]Line 2")
-	if len(lines) != 2 { t.Fatalf("count = %d", len(lines)) }
-	if lines[0].Text != "Line 1" { t.Errorf("text = %q", lines[0].Text) }
-	if lines[0].Timestamp != 1000 { t.Errorf("ts = %d", lines[0].Timestamp) }
-	if lines[1].Timestamp != 2500 { t.Errorf("ts = %d", lines[1].Timestamp) }
-}
-
-func TestParse_WithOffset(t *testing.T) {
-	lines := lrc.Parse("[offset:+500]\n[00:01.00]Line")
-	if len(lines) != 1 { t.Fatalf("count = %d", len(lines)) }
-	if lines[0].Timestamp != 1500 { t.Errorf("ts = %d, want 1500", lines[0].Timestamp) }
-}
-
-func TestParse_Empty(t *testing.T) {
-	if lines := lrc.Parse(""); len(lines) != 0 { t.Errorf("empty should return 0") }
-}
-
-func TestParse_InvalidLine(t *testing.T) {
-	lines := lrc.Parse("not a lrc line\n[00:01.00]valid")
-	if len(lines) != 1 { t.Errorf("count = %d, want 1", len(lines)) }
-}
-
-func TestFormat(t *testing.T) {
-	lines := []lrc.Line{{Timestamp: 1000, Text: "Hello"}, {Timestamp: 2500, Text: "World"}}
-	out := lrc.Format(lines)
-	expected := "[00:01.00]Hello\n[00:02.50]World\n"
-	if out != expected { t.Errorf("got %q, want %q", out, expected) }
-}
-```
-
-- [ ] **Step 2 (VERIFY RED)**
-- [ ] **Step 3 (GREEN): 实现**
-
-```go
-// pkg/lrc/parser.go
-package lrc
-
-import (
-	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
-)
-
-type Line struct {
-	Timestamp int64  // 毫秒
-	Text      string
-}
-
-var lineRe = regexp.MustCompile(`\[(\d+):(\d+(?:\.\d+)?)\](.*)`)
-
-func Parse(lrc string) []Line {
-	var lines []Line
-	offset := int64(0)
-	for _, raw := range strings.Split(lrc, "\n") {
-		raw = strings.TrimSpace(raw)
-		if raw == "" { continue }
-		if strings.HasPrefix(raw, "[offset:") {
-			o := strings.TrimSuffix(strings.TrimPrefix(raw, "[offset:"), "]")
-			if v, err := strconv.ParseInt(o, 10, 64); err == nil { offset = v }
-			continue
-		}
-		m := lineRe.FindStringSubmatch(raw)
-		if m == nil { continue }
-		min, _ := strconv.ParseInt(m[1], 10, 64)
-		sec, _ := strconv.ParseFloat(m[2], 64)
-		ts := min*60000 + int64(sec*1000) + offset
-		lines = append(lines, Line{Timestamp: ts, Text: m[3]})
-	}
-	return lines
-}
-
-func Format(lines []Line) string {
-	var b strings.Builder
-	for _, l := range lines {
-		min := l.Timestamp / 60000
-		sec := float64(l.Timestamp%60000) / 1000
-		b.WriteString(fmt.Sprintf("[%02d:%05.2f]%s\n", min, sec, l.Text))
-	}
-	return b.String()
-}
-```
-
-- [ ] **Step 4 (VERIFY GREEN)**
-- [ ] **Step 5: 提交**
-
----
-
-### Task 3: PlaylistService（歌单管理）
+### Task 2: PlaylistService（歌单管理）
 
 **Files:**
 - Create: `echovault-server/internal/service/playlist/service.go`
@@ -324,7 +218,7 @@ func Format(lines []Line) string {
 
 ---
 
-### Task 4: gRPC LyricHandler + PlaylistHandler
+### Task 3: gRPC LyricHandler + PlaylistHandler
 
 **Files:**
 - Create: `echovault-server/internal/grpc/handler_lyric.go`
@@ -344,7 +238,6 @@ func Format(lines []Line) string {
 ### 自审清单
 
 - [ ] LyricService 6 测试通过
-- [ ] LRC 解析器 6 测试通过
 - [ ] PlaylistService 6 测试通过
 - [ ] gRPC Handlers 4 测试通过
 - [ ] `go test ./... -count=1` 全部通过

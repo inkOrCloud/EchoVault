@@ -658,7 +658,6 @@ services:
 | Task | 测试 | 说明 |
 |:---:|:---:|:---|
 | LyricService | 6 | 歌词 CRUD（多语言/多类型） |
-| LRC 解析器 | 6 | pkg/lrc，解析/格式化 LRC |
 | PlaylistService | 6 | 歌单 CRUD + 歌曲编排 |
 | gRPC Handlers | 4 | LyricHandler + PlaylistHandler |
 
