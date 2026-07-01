@@ -66,4 +66,4 @@ static_resources:
       - lb_endpoints:
         - endpoint:
             address:
-              socket_address: { address: echovault-server, port_value: 9090 }
+              socket_address: { address: echovault-server, port_value: 9091 }
