@@ -640,42 +640,75 @@ services:
 
 ## 9. 开发路线图
 
-### Phase 1：基础设施（2-3周）
-- Go 项目脚手架 + 项目结构
-- proto 定义 + Buf 代码生成
-- Ent schema 定义 + 数据库初始化
-- gRPC 服务端框架 + Envoy 代理
-- Docker Compose 开发环境
+> 策略：先完成全部 Go 后端服务，再统一开发 Flutter 前端。
+> 当前进度：Phase 1-4 已完成（Go 后端基础设施 + 用户系统 + 同步引擎 + 歌曲库）。
 
-### Phase 2：用户系统 + 设备管理（1-2周）
-- UserService（Register / Login / JWT）
-- 设备注册与管理
-- Flutter 登录/注册页面
+### 后端（Go） — 已完成
 
-### Phase 3：同步引擎核心（3-4周）
-- 客户端 drift 数据层
-- SyncService（Push / Pull / Subscribe）
-- 冲突检测与解决
-- 客户端同步状态管理
+| Phase | 内容 | 测试 |
+|:---:|:---|:---:|
+| **1** | 项目脚手架、Ent Schema、gRPC 框架、Envoy 代理、Docker Compose | 16 |
+| **2** | JWT 工具包、UserService、DeviceService、AuthInterceptor | 14 |
+| **3** | VersionTracker、ChangeLogger、ConflictResolver、Notifier、SyncService、gRPC SyncHandler | 21 |
+| **4** | SongService、CheckSongsByHash、Gin REST 文件服务、gRPC SongHandler | 12 |
 
-### Phase 4：歌曲库 + 扫描器（2-3周）
-- SongService + CheckSongsByHash
-- 本地文件扫描器（Flutter）
-- PublishSong + REST 上传
-- 歌曲列表/搜索页面
+### 后端（Go） — 待完成
 
-### Phase 5：播放器 + 歌词（2周）
-- just_audio 集成
-- LRC 解析器 + 同步显示
-- 迷你播放器 + 全屏播放页
+#### Phase 5a：歌词 + 歌单（2周）
+| Task | 测试 | 说明 |
+|:---:|:---:|:---|
+| LyricService | 6 | 歌词 CRUD（多语言/多类型） |
+| LRC 解析器 | 6 | pkg/lrc，解析/格式化 LRC |
+| PlaylistService | 6 | 歌单 CRUD + 歌曲编排 |
+| gRPC Handlers | 4 | LyricHandler + PlaylistHandler |
 
-### Phase 6：歌单 + 收尾（2周）
-- PlaylistService
-- 歌单管理页面
-- 多设备管理 UI
-- 部署文档 + 测试
+#### Phase 5b：文件元数据扫描 + 音频元数据解析（1周）
+| Task | 测试 | 说明 |
+|:---:|:---:|:---|
+| 音频元数据解析器 | 6 | pkg/metadata，解析 MP3/FLAC 标签 |
+| 扫描服务集成 | 2 | gRPC 接口暴露元数据 |
 
-**预计总工期：12-16 周**
+### 前端（Flutter） — 统一开发
+
+#### Phase 6：Flutter 应用框架（2周）
+| Task | 说明 |
+|:---:|:---|
+| Flutter 项目初始化 | drift、grpc-dart、dio、Riverpod 配置 |
+| gRPC-Web 客户端封装 | JWT 拦截器、自动重连 |
+| drift 本地数据库 | 离线优先数据层 |
+| 认证模块 | 登录/注册页面、Token 管理 |
+
+#### Phase 7：歌曲库 + 扫描器 UI（2周）
+| Task | 说明 |
+|:---:|:---|
+| 本地文件扫描器 | dart:io 递归扫描、SHA256、元数据提取 |
+| 歌曲列表/搜索 | 瀑布流、搜索栏、排序筛选 |
+| 歌曲发布流程 | 编辑元数据、上传封面、上传歌词 |
+
+#### Phase 8：播放器 + 歌词（2周）
+| Task | 说明 |
+|:---:|:---|
+| just_audio 集成 | 播放/暂停/seek、后台播放 |
+| LRC 歌词同步 | 时间轴匹配、逐行高亮 |
+| 迷你播放器 | 底部悬浮条 |
+| 全屏播放页 | 封面 + 歌词 + 进度条 + 歌单队列 |
+
+#### Phase 9：歌单 + 设备管理（1周）
+| Task | 说明 |
+|:---:|:---|
+| 歌单管理 | 创建/编辑/排序/分享 |
+| 多设备管理 | 设备列表、同步状态指示 |
+| 同步状态 UI | Push/Pull 进度、冲突提示 |
+
+#### Phase 10：部署 + 收尾（1周）
+| Task | 说明 |
+|:---:|:---|
+| 部署文档 | Docker Compose、环境变量、首次配置 |
+| 使用文档 | 用户手册、FAQ |
+| 端到端测试 | 完整流程验证 |
+
+**预计剩余工期：8-11 周**
+（后端 Phase 5：2-3 周 + 前端 Phase 6-10：6-8 周）
 
 ---
 
