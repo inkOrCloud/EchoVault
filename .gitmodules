@@ -1,9 +1,0 @@
-[submodule "proto"]
-	path = proto
-	url = https://github.com/inkOrCloud/echovault-proto.git
-[submodule "echovault-server"]
-	path = echovault-server
-	url = https://github.com/inkOrCloud/echovault-server.git
-[submodule "echo_vault_app"]
-	path = echo_vault_app
-	url = https://github.com/inkOrCloud/echo-vault-app.git
