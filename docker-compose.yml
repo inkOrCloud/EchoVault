@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  envoy:
+    image: envoyproxy/envoy:v1.32-latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+    depends_on:
+      - echovault-server
+
+  echovault-server:
+    build:
+      context: ./echovault-server
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./data:/app/data
+    environment:
+      DB_DRIVER: sqlite3
+      DB_PATH: /app/data/echovault.db
+      STORAGE_TYPE: local
+      STORAGE_PATH: /app/data/files
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
