@@ -37,3 +37,9 @@ data/
 # OS
 .DS_Store
 Thumbs.db
+
+# Superpowers AI tooling
+.superpowers/
+
+# Temporary test output
+test_write/
